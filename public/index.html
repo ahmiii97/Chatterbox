@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatterbox - Login</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .auth-tab {
+            flex: 1;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .auth-tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .auth-form {
+            display: none;
+        }
+        
+        .auth-form.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .auth-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+        
+        .auth-btn:hover {
+            background: #5a67d8;
+        }
+        
+        .auth-switch {
+            text-align: center;
+            color: #666;
+        }
+        
+        .auth-switch a {
+            color: #667eea;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h1>Chatterbox 💬</h1>
+                <p>Sign in to start messaging</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <div class="auth-tab active" onclick="showTab('login')">Login</div>
+                <div class="auth-tab" onclick="showTab('signup')">Sign Up</div>
+            </div>
+            
+            <div id="login-form" class="auth-form active">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" placeholder="Your email">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" placeholder="Your password">
+                </div>
+                <button class="auth-btn" onclick="login()">Login</button>
+                <div class="auth-switch">
+                    Don't have an account? <a onclick="showTab('signup')">Sign up</a>
+                </div>
+            </div>
+            
+            <div id="signup-form" class="auth-form">
+                <div class="form-group">
+                    <label for="signup-email">Email</label>
+                    <input type="email" id="signup-email" placeholder="Your email">
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Password</label>
+                    <input type="password" id="signup-password" placeholder="Create a password">
+                </div>
+                <div class="form-group">
+                    <label for="signup-displayname">Display Name</label>
+                    <input type="text" id="signup-displayname" placeholder="How should we call you?">
+                </div>
+                <button class="auth-btn" onclick="signup()">Create Account</button>
+                <div class="auth-switch">
+                    Already have an account? <a onclick="showTab('login')">Login</a>
+                </div>
+            </div>
+            
+            <div class="google-auth">
+                <button class="auth-btn google-btn" onclick="googleLogin()">
+                    Sign in with Google
+                </button>
+            </div>
+            
+            <div class="auth-status" id="auth-status"></div>
+        </div>
+    </div>
+
+    <!-- Firebase App and Auth -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <script>
+        // Firebase configuration - replace with your actual config
+     const firebaseConfig = {
+            apiKey: "AIzaSyBmccMP9WXl4G-Qpcg8q9F-3X_02TamTiE",
+            authDomain: "chatter-3e579.firebaseapp.com",
+            projectId: "chatter-3e579",
+            storageBucket: "chatter-3e579.firebasestorage.app",
+            messagingSenderId: "364669673603",
+            appId: "1:364669673603:web:80e8399026d7b5d298bbb6",
+            measurementId: "G-4RDSY633B1"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        function showTab(tabName) {
+            // Update tabs
+            document.querySelectorAll('.auth-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+            
+            if (tabName === 'login') {
+                document.querySelector('.auth-tab:nth-child(1)').classList.add('active');
+                document.getElementById('login-form').classList.add('active');
+            } else {
+                document.querySelector('.auth-tab:nth-child(2)').classList.add('active');
+                document.getElementById('signup-form').classList.add('active');
+            }
+        }
+        
+        function showStatus(message, isError = false) {
+            const statusEl = document.getElementById('auth-status');
+            statusEl.textContent = message;
+            statusEl.style.color = isError ? '#e53e3e' : '#38a169';
+        }
+        
+        async function login() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    
+    if (!email || !password) {
+        showStatus('Please fill in all fields', true);
+        return;
+    }
+    
+    showStatus('Signing in...');
+    
+    try {
+        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+        const idToken = await userCredential.user.getIdToken();
+        
+        // Verify token with our backend
+        const response = await fetch('/api/verify-token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ token: idToken })
+        });
+        
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Server returned non-JSON response');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            localStorage.setItem('chatToken', idToken);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            window.location.href = '/chat';
+        } else {
+            showStatus('Authentication failed', true);
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        showStatus('Login failed. Please try again.', true);
+    }
+}
+        
+        async function signup() {
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const displayName = document.getElementById('signup-displayname').value;
+            
+            if (!email || !password) {
+                showStatus('Please fill in all required fields', true);
+                return;
+            }
+            
+            showStatus('Creating account...');
+            
+            try {
+                const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+                
+                // Update profile with display name
+                if (displayName) {
+                    await userCredential.user.updateProfile({
+                        displayName: displayName
+                    });
+                }
+                
+                // Send email verification
+                await userCredential.user.sendEmailVerification();
+                
+                const idToken = await userCredential.user.getIdToken();
+                
+                // Verify token with our backend
+                const response = await fetch('/api/verify-token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token: idToken })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('Account created! Please check your email for verification.');
+                    setTimeout(() => {
+                        showTab('login');
+                    }, 3000);
+                }
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        }
+        
+        async function googleLogin() {
+            showStatus('Signing in with Google...');
+            
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                const userCredential = await firebase.auth().signInWithPopup(provider);
+                const idToken = await userCredential.user.getIdToken();
+                
+                // Verify token with our backend
+                const response = await fetch('/api/verify-token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ token: idToken })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    localStorage.setItem('chatToken', idToken);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = '/chat';
+                } else {
+                    showStatus('Authentication failed', true);
+                }
+            } catch (error) {
+                showStatus(error.message, true);
+            }
+        }
+        
+        // Check if user is already logged in
+        firebase.auth().onAuthStateChanged(function(user) {
+            if (user) {
+                user.getIdToken().then(function(idToken) {
+                    localStorage.setItem('chatToken', idToken);
+                    localStorage.setItem('user', JSON.stringify({
+                        uid: user.uid,
+                        email: user.email
+                    }));
+                });
+            }
+        });
+        
+        // Allow form submission with Enter key
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    if (document.getElementById('login-form').classList.contains('active')) {
+                        login();
+                    } else {
+                        signup();
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
